@@ -1,0 +1,31 @@
+#include <stdio.h>
+#include <stdlib.h> // For qsort and exit
+
+// Comparison function for qsort (must accept two const void* pointers)
+int compare_integers(const void *a, const void *b) {
+    // Cast the generic void* pointers back to their specific type (int*)
+    int val_a = *(const int *)a;
+    int val_b = *(const int *)b;
+    
+    if (val_a < val_b) return -1;
+    if (val_a > val_b) return 1;
+    return 0;
+}
+
+int main() {
+    int numbers[] = {5, 2, 8, 1, 9};
+    size_t n = sizeof(numbers) / sizeof(numbers[0]);
+
+    printf("Original array: 5 2 8 1 9\n");
+    
+    // qsort takes void* for the array base and the comparison function
+    qsort(numbers, n, sizeof(int), compare_integers);
+    
+    printf("Sorted array: ");
+    for (size_t i = 0; i < n; i++) {
+        printf("%d ", numbers[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
