@@ -1,0 +1,38 @@
+#include <sys/epoll.h>
+
+void start_centralized_engine(int quote_fd, int trade_fd) {
+    int epoll_fd = epoll_create1(0);
+    struct epoll_event ev, events[10];
+
+    // Add Quote Socket to the monitor
+    ev.events = EPOLLIN; // Watch for incoming data
+    ev.data.fd = quote_fd;
+    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, quote_fd, &ev);
+
+    // Add Trade Socket to the monitor
+    ev.data.fd = trade_fd;
+    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, trade_fd, &ev);
+
+    time_t last_hb = time(NULL);
+
+    while (1) {
+        // 1. Wait for ANY socket activity (Timeout set to 1000ms)
+        int nfds = epoll_wait(epoll_fd, events, 10, 1000);
+
+        for (int n = 0; n < nfds; n++) {
+            if (events[n].data.fd == quote_fd) {
+                handle_market_data(quote_fd); // Process prices
+            } 
+            else if (events[n].data.fd == trade_fd) {
+                handle_trade_response(trade_fd); // Process fills/rejects
+            }
+        }
+
+        // 2. Centralized Heartbeat Timer
+        if (time(NULL) - last_hb >= 10) {
+            send_heartbeat(quote_fd);
+            send_heartbeat(trade_fd);
+            last_hb = time(NULL);
+        }
+    }
+}
