@@ -23,7 +23,6 @@ typedef struct {
 int receive_to_buffer(int sock_fd, RawBuffer *rb) {
     // 1. Calculate how much space is left in our pre-allocated memory
     int space_left = BUF_SIZE - rb->write_idx;
-
     if (space_left <= 0) {
         fprintf(stderr, "Buffer Overflow: Strategy is not consuming data fast enough.\n");
         return -1;
