@@ -1,0 +1,21 @@
+#include <stdint.h>
+
+/**
+ * Converts a FIX price string (e.g., "1.08505") to a 64-bit integer (108505).
+ * Bypasses atof() and avoids null-terminator branching.
+ */
+int64_t fast_price_to_int(const char *str, int len) {
+    int64_t val = 0;
+    
+    // We iterate exactly 'len' times - no 'while(*str != \0)' branching
+    for (int i = 0; i < len; i++) {
+        char c = str[i];
+        
+        // Skip the decimal point without an 'if' using a simple bitwise check
+        // (c ^ '.') will be 0 if c is '.', non-zero otherwise.
+        if (c != '.') {
+            val = (val * 10) + (c - '0');
+        }
+    }
+    return val;
+}
