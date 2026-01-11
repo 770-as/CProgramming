@@ -1,0 +1,106 @@
+int inet_pton(int af, const char *src, void *dst);
+ssize_t recv(int sockfd, void *buf, size_t len, int flags);
+write(pipe_fd, buffer, bytes); //
+int memcp(const void *s1, const void *s2, size_t n); // s1 pointer to your buffer s2 pointer to the constant string you are checking against, number of bytes to compare
+void *memcpy(void *dest, const void *src, size_t n); // copy from src to dst without looking at terminator faster than strcpy
+void *memmove(void *dest, const void *src, size_t n); //when source and memory allocation overlap
+//implement a receive loop
+#include <sys/socket.h>
+#include <stdio.h>
+#include <string.h>
+
+#define BUF_SIZE 65536 // 64KB Buffer
+
+typedef struct {
+    char data[BUF_SIZE];
+    int write_idx; // Current position to write new bytes
+} RawBuffer;
+
+/**
+ * Receives raw bytes from the socket and appends them to the buffer.
+ * Returns the number of new bytes received, or -1 on error.
+ */
+int receive_to_buffer(int sock_fd, RawBuffer *rb) {
+    // 1. Calculate how much space is left in our pre-allocated memory
+    int space_left = BUF_SIZE - rb->write_idx;
+
+    if (space_left <= 0) {
+        fprintf(stderr, "Buffer Overflow: Strategy is not consuming data fast enough.\n");
+        return -1;
+    }
+
+    // 2. Receive data directly into the buffer at the current cursor (write_idx)
+    // We use the MSG_DONTWAIT flag if we want non-blocking behavior
+    ssize_t bytes_read = recv(sock_fd, rb->data + rb->write_idx, space_left, 0);
+
+    if (bytes_read > 0) {
+        // 3. Move the cursor forward by the amount of data received
+        rb->write_idx += (int)bytes_read;
+        return (int)bytes_read;
+    } else if (bytes_read == 0) {
+        printf("Connection closed by broker.\n");
+        return 0;
+    } else {
+        perror("Socket receive error");
+        return -1;
+    }
+}
+//...
+//Implement a standard buffer, recv must point to the next writing position so use a pointer which update each receiving data and ensure the free space is enough each time
+void manage_buffer_flow(RawBuffer *rb) {
+    // Let's say your parser found a complete message of 120 bytes
+    int bytes_processed = 120; 
+
+    if (bytes_processed > 0 && bytes_processed < rb->write_idx) {
+        int remaining = rb->write_idx - bytes_processed;
+        
+        // Move partial data to the beginning (memmove handles overlapping memory)
+        memmove(rb->data, rb->data + bytes_processed, remaining);
+        rb->write_idx = remaining;
+    } else if (bytes_processed == rb->write_idx) {
+        // Perfect fit, just reset the cursor
+        rb->write_idx = 0;
+    }
+}
+
+
+
+//epoll loop kernel interrupts the cpu only when data hits the NIC lowest possible latency
+#include <sys/epoll.h>
+#include <unistd.h>
+#include <stdio.h>
+
+void handle_event_driven_fix(int sock_fd) {
+    int epoll_fd = epoll_create1(0);
+    struct epoll_event event, events[1];
+    // Register the socket for "Read" events (EPOLLIN)
+    event.events = EPOLLIN;
+    event.data.fd = sock_fd;
+    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sock_fd, &event);
+
+    printf("Waiting for FIX data... (No loop used)\n");
+
+    // This blocks until data arrives. In HFT, this is where the "Wake up" happens.
+    int n = epoll_wait(epoll_fd, events, 1, -1); 
+    if (n > 0) {
+        char buffer[1024];
+        ssize_t bytes = recv(events[0].data.fd, buffer, sizeof(buffer) - 1, 0);
+        if (bytes > 0) {
+            buffer[bytes] = '\0'; // Null terminate for output            
+            // Output to "another line" (Standard Output)
+            printf("RAW DATA: %s\n", buffer);
+        }
+    }
+    close(epoll_fd);
+}
+//epoll_create1 to write data and interrupt the cpu only when the nic is full
+void handle_event_write(int sock fd) {
+  int epoll_fd=epoll_create1(0);
+  struct epoll_event event_write, events[1];
+  event_write.events=EPOLLOUT;
+  event_write.data.fd=sock_fd;
+  epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sock_fd, &event_write);
+}
+
+
+
