@@ -1,0 +1,37 @@
+void send_market_data_request(int sock_fd, const char *sender, const char *target) {
+    char body[1024];
+    char message[1280];
+    
+    // Define your 5 pairs
+    const char *pairs[] = {"EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CHF"};
+    
+    // 1. Build the body with the Repeating Group (Tag 146=5)
+    // 262=UniqueID, 263=1(Subscribe), 264=1(Top of Book), 265=1(Full Refresh)
+    int offset = snprintf(body, sizeof(body),
+        "35=V%c34=2%c49=%s%c52=20240522-10:00:00%c56=%s%c262=ARB_REQ_01%c263=1%c264=1%c265=1%c146=5%c",
+        SOH, SOH, sender, SOH, SOH, target, SOH, SOH, SOH, SOH, SOH, SOH);
+
+    // Append the 5 symbols
+    for(int i = 0; i < 5; i++) {
+        offset += snprintf(body + offset, sizeof(body) - offset, "55=%s%c", pairs[i], SOH);
+    }
+
+    // 2. Wrap in Header (8, 9) and Trailer (10)
+    int body_len = strlen(body);
+    char header[64];
+    snprintf(header, sizeof(header), "8=FIX.4.4%c9=%d%c", SOH, body_len, SOH);
+    
+    sprintf(message, "%s%s", header, body);
+    
+    // 3. Checksum
+    unsigned int checksum = 0;
+    for (int i = 0; i < strlen(message); i++) checksum += (unsigned char)message[i];
+    
+    char trailer[16];
+    sprintf(trailer, "10=%03u%c", checksum % 256, SOH);
+    strcat(message, trailer);
+
+    // 4. Send
+    send(sock_fd, message, strlen(message), 0);
+    printf("Market Data Subscription Sent.\n");
+}
