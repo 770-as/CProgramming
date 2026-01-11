@@ -1,0 +1,81 @@
+mkfifo pipe1 pipe2 pipe3
+#include <fcntl.h>
+#include <stdio.h>
+#include <unistd.h>
+
+// ... inside main ...
+
+// Open the pipes for Reading only and set to Non-Blocking
+int fd1 = open("pipe1", O_RDONLY | O_NONBLOCK);
+int fd2 = open("pipe2", O_RDONLY | O_NONBLOCK);
+int fd3 = open("pipe3", O_RDONLY | O_NONBLOCK);
+
+if (fd1 == -1 || fd2 == -1 || fd3 == -1) {
+    perror("Error opening pipes");
+    return 1;
+}
+
+struct epoll_event event;
+event.events = EPOLLIN; // Watch for input
+
+// Register Pipe 1
+event.data.fd = fd1;
+epoll_ctl(ep_fd, EPOLL_CTL_ADD, fd1, &event);
+
+// Register Pipe 2
+event.data.fd = fd2;
+epoll_ctl(ep_fd, EPOLL_CTL_ADD, fd2, &event);
+
+// Register Pipe 3
+event.data.fd = fd3;
+epoll_ctl(ep_fd, EPOLL_CTL_ADD, fd3, &event);
+
+echo "Hello from Pipe 2" > pipe2
+
+#define MAX_EVENTS 10
+#define BUF_SIZE 1024
+
+struct epoll_event events[MAX_EVENTS];
+char buffer[BUF_SIZE];
+
+while (1) {
+    // 1. Wait for activity (timeout -1 means wait forever)
+    int num_fds = epoll_wait(ep_fd, events, MAX_EVENTS, -1);
+    
+    for (int i = 0; i < num_fds; i++) {
+        if (events[i].events & EPOLLIN) {
+            // 2. Identify which pipe sent data
+            int current_fd = events[i].data.fd;
+            
+            // 3. Read the data from the pipe
+            ssize_t bytes_read = read(current_fd, buffer, sizeof(buffer) - 1);
+            
+            if (bytes_read > 0) {
+                buffer[bytes_read] = '\0'; // Null-terminate the string
+                
+                // 4. Put into your queue
+                printf("Log captured from FD %d: %s", current_fd, buffer);
+                enqueue_log_message(current_fd, buffer); 
+            }
+        }
+    }
+}
+typedef struct {
+    char messages[100][BUF_SIZE]; // Array of strings
+    int head;
+    int tail;
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+} LogQueue;
+
+void enqueue_log_message(int fd, char* msg) {
+    pthread_mutex_lock(&queue.lock);
+    
+    // Copy the message into the queue's tail
+    strncpy(queue.messages[queue.tail], msg, BUF_SIZE);
+    queue.tail = (queue.tail + 1) % 100;
+    
+    // Signal the worker thread that data is ready  
+    pthread_cond_signal(&queue.cond);
+    pthread_mutex_unlock(&queue.lock);
+}
