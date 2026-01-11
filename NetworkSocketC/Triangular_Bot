@@ -1,0 +1,90 @@
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/tcp.h>
+#include <unistd.h>
+#include <time.h>
+
+#define SOH '\x01'
+#define BUF_SIZE 8192
+
+// --- 1. The Checksum & Message Builder ---
+void build_logon(char *dest, const char *sender, const char *target) {
+    char body[512], header[128], trailer[32];
+    
+    // Time formatting for Tag 52
+    time_t now = time(NULL);
+    struct tm *u = gmtime(&now);
+    char time_str[22];
+    strftime(time_str, sizeof(time_str), "%Y%m%d-%H:%M:%S", u);
+
+    // Body: MsgType=A (Logon), Seq=1, Encrypt=0, HeartBt=30
+    int body_len = snprintf(body, sizeof(body),
+        "35=A%c34=1%c49=%s%c52=%s%c56=%s%c98=0%c108=30%c",
+        SOH, SOH, sender, SOH, time_str, SOH, target, SOH, SOH, SOH);
+
+    int head_len = snprintf(header, sizeof(header), "8=FIX.4.4%c9=%d%c", SOH, body_len, SOH);
+
+    sprintf(dest, "%s%s", header, body);
+
+    unsigned int checksum = 0;
+    for (int i = 0; i < strlen(dest); i++) checksum += (unsigned char)dest[i];
+    sprintf(trailer, "10=%03u%c", checksum % 256, SOH);
+    strcat(dest, trailer);
+}
+
+// --- 2. Main Execution ---
+int main() {
+    // PARAMETERS: Update these with your broker's details
+    const char *broker_ip = "demo-uk-eqx-01.p.c-trader.com"
+    int port = 5211;
+    const char *sender = "demo.icmarketsau.9011346"
+    const char *target = "CSERVER"  
+
+    int sock_fd;
+    struct sockaddr_in6 serv_addr;
+    char buffer[BUF_SIZE];
+
+    // Create Socket
+    sock_fd = socket(AF_INET6, SOCK_STREAM, 0);
+    
+    // Lateny Optimization: Disable Nagle's Algorithm
+    int opt = 1;
+    setsockopt(sock_fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
+
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sin6_family = AF_INET6;
+    serv_addr.sin6_port = htons(port);
+    inet_pton(AF_INET6, broker_ip, &serv_addr.sin6_addr);
+
+    printf("Connecting to %s:%d...\n", broker_ip, port);
+    if (connect(sock_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        perror("Connection Failed");
+        return -1;
+    }
+
+    // Build and Send Logon
+    build_logon(buffer, sender, target);
+    printf("Sending Logon: %s\n", buffer);
+    send(sock_fd, buffer, strlen(buffer), 0);
+
+    // Receive Response
+    printf("Waiting for response...\n");
+    memset(buffer, 0, BUF_SIZE);
+    ssize_t bytes = recv(sock_fd, buffer, BUF_SIZE - 1, 0);
+
+    if (bytes > 0) {
+        printf("Received %ld bytes: %s\n", bytes, buffer);
+        
+        // Check if response contains 35=A (Logon Success) or 35=5 (Logout/Reject)
+        if (strstr(buffer, "35=A")) {
+            printf("LOGON SUCCESSFUL. Ready for market data.\n");
+        } else if (strstr(buffer, "35=5")) {
+            printf("LOGON REJECTED by broker.\n");
+        }
+    }
+
+    close(sock_fd);
+    return 0;
+}
