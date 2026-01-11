@@ -1,0 +1,34 @@
+// Pre-formatted order template to save nanoseconds
+void send_trade_request(int sock_fd, const char *symbol, int side, int64_t price_int, int qty) {
+    char body[512];
+    char message[1024];
+    
+    // Convert our fixed-point integer back to a string for the FIX message
+    char price_str[32];
+    snprintf(price_str, sizeof(price_str), "%ld.%05ld", price_int / 100000, price_int % 100000);
+
+    // Create a unique Client Order ID (using timestamp for speed)
+    long clOrdID = time(NULL);
+
+    // Build Body
+    int body_len = snprintf(body, sizeof(body),
+        "35=D%c11=%ld%c55=%s%c54=%d%c38=%d%c40=2%c44=%s%c59=0%c",
+        SOH, clOrdID, SOH, symbol, SOH, side, SOH, qty, SOH, price_str, SOH, SOH);
+
+    // Header
+    char header[64];
+    int head_len = snprintf(header, sizeof(header), "8=FIX.4.4%c9=%d%c", SOH, body_len, SOH);
+
+    sprintf(message, "%s%s", header, body);
+
+    // Checksum
+    unsigned int checksum = 0;
+    for (int i = 0; i < strlen(message); i++) checksum += (unsigned char)message[i];
+    
+    char trailer[16];
+    sprintf(trailer, "10=%03u%c", checksum % 256, SOH);
+    strcat(message, trailer);
+
+    // SEND IMMEDIATELY
+    send(sock_fd, message, strlen(message), 0);
+}
