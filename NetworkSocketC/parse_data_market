@@ -1,0 +1,33 @@
+typedef struct {
+    int64_t bid;
+    int64_t ask;
+} PriceBook;
+
+void parse_market_data(char *msg, int len, PriceBook *book) {
+    char *ptr = msg;
+    char *end = msg + len;
+    int current_type = -1; // 0 for Bid, 1 for Ask
+
+    while (ptr < end) {
+        // Find the next tag (e.g., "269=")
+        if (memcmp(ptr, "269=", 4) == 0) {
+            current_type = *(ptr + 4) - '0'; // Quick char-to-int for '0' or '1'
+        } 
+        else if (memcmp(ptr, "270=", 4) == 0) {
+            ptr += 4; // Move to the start of the price string
+            
+            // Find the end of the price (the SOH separator)
+            char *next_soh = strchr(ptr, SOH);
+            int val_len = (int)(next_soh - ptr);
+            
+            // Convert to fixed-point integer
+            int64_t price_val = fast_price_to_int(ptr, val_len);
+            
+            if (current_type == 0) book->bid = price_val;
+            else if (current_type == 1) book->ask = price_val;
+            
+            ptr = next_soh; // Jump to the separator
+        }
+        ptr++; // Keep scanning
+    }
+}
