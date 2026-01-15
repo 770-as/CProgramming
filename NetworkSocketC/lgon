@@ -68,10 +68,10 @@ int main() {
     build_logon(buffer, sender, target);
     printf("Sending Logon: %s\n", buffer);
     send(sock_fd, buffer, strlen(buffer), 0);
-
+    // memset(buffer, 0, BUF_SIZE);this block of memory starting at buffer and turn every single bit to zero for a total of BUF_SIZE byte
     // Receive Response
     printf("Waiting for response...\n");
-    memset(buffer, 0, BUF_SIZE);
+    memset(buffer, 0, BUF_SIZE); //memset is incredibly fast because it uses SIMD (Single Instruction, Multiple Data) instructions—the CPU can zero out 32 or 64 bytes in a single "heartbeat." 
     ssize_t bytes = recv(sock_fd, buffer, BUF_SIZE - 1, 0);
 
     if (bytes > 0) {
@@ -88,3 +88,5 @@ int main() {
     close(sock_fd);
     return 0;
 }
+/*we construct the message for logon sequentially, the header body and trailer then we create a socket connection a struct sockaddr_inet6 we disable nagles algorithm for latency optimization, we send the logon through the 
+scoket from the buffer where we stored the logon message we recv the response from the socket and look at the value 35=A or 35=5 into the buffer. */
