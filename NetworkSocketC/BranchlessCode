@@ -1,0 +1,46 @@
+/*We want the math to happen for every character, but we want the "dot" to have zero effect.
+For numbers: val = (val * 10) + digit
+For the dot: val = (val * 1) + 0 (No change)
+To do this, we create a Mask (a 0 or 1) based on whether the character is a dot.
+If it's a digit: is_not_dot is 1. In binary, -1 is 11111111.... When you & (AND) the digit with all 1s, the digit stays exactly the same.
+If it's a dot: is_not_dot is 0. In binary, -0 is 00000000.... When you & any value with all 0s, it becomes 0.
+Predictability: The CPU execution time is identical for every price string. This removes "jitter" (random delays) from your trading bot.
+Instruction Parallelism: Because there are no branches, the CPU can use Speculative Execution to process multiple characters of the price string at the exact same time.
+Kernel Efficiency: This code uses so few cycles that your 32-bit/64-bit kernel overhead becomes the largest bottleneck, not your math.
+Imagine you are reading a price string "150" character by character. Your goal is to build the number 150 in a variable called val.
+First Char is '1': * Convert '1' to math 1.
+val becomes 1.
+Second Char is '5': * Wait! You can't just add 5 to 1 (that would be 6). You need the 1 to move over to the "Tens" place so the 5 can fit in the "Ones" place.
+The Shift: val * 10 turns 1 into 10.
+The Add: 10 + 5 = 15.
+Third Char is '0': * Again, shift the 15 to the left.
+The Shift: 15 * 10 turns 15 into 150.
+The Add: 150 + 0 = 150.
+Think of val * 10 as a "conveyor belt." Every time a new digit arrives, you push everything already on the belt one spot to the left to make room for the newcomer.*/
+
+
+
+
+fast_price_to_int_branchless(const char *str, int len) {
+    int64_t val = 0;
+    for (int i = 0; i < len; i++) {
+        char c = str[i];
+
+        // 1. Create a mask: 0 if it's a dot, 1 if it's a digit
+        // (c ^ '.') is 0 only when c is '.'
+        // !!(c ^ '.') turns any non-zero value into 1
+        int is_not_dot = !!(c ^ '.');
+
+        // 2. Multiplier: 10 if digit, 1 if dot
+        int multiplier = (is_not_dot * 9) + 1; 
+
+        // 3. Digit value: (c - '0') if digit, 0 if dot
+        // We use bitwise AND with a mask of -is_not_dot 
+        // (-1 in binary is all 1s, 0 is all 0s)
+        int digit = (c - '0') & -is_not_dot;
+
+        // 4. Apply math without any 'if'
+        val = (val * multiplier) + digit;
+    }
+    return val;
+}
