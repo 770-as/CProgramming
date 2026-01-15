@@ -5,8 +5,8 @@
  * Bypasses atof() and avoids null-terminator branching.
  */
 int64_t fast_price_to_int(const char *str, int len) {
-    int64_t val = 0;
-    
+    int64_t val =0; //Instead of storing a price as 1.08505 (which can have rounding errors in binary), this function treats the price as a whole number By shifting the decimal out of the way, you can perform lightning-fast integer math on the CPU. The "Brain" (your AI) just needs to remember that the price is scaled by $10^5$.
+    //By passing the len (length) explicitly from our earlier FIX parser, the CPU knows exactly how many times to loop. This allows the CPU to unroll the loop, executing multiple characters in parallel.
     // We iterate exactly 'len' times - no 'while(*str != \0)' branching
     for (int i = 0; i < len; i++) {
         char c = str[i];
