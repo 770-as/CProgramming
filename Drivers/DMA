@@ -1,1 +1,48 @@
 /*Design a driver for a high speed sensor on a microcontroller. The sensor fills a small hardware buffer every 10 microseconds. */
+; --- Define Constants ---
+DMA1_BASE EQU 0x40026000 ; Base address of DMA1
+DMA1_S0CR EQU 0x10 ; Offset for Stream 0 Configuration Register
+DMA1_S0NDTR EQU 0x14 ; Offset for Number of Data Register
+DMA1_S0PAR EQU 0x18 ; Offset for Peripheral Address Register
+DMA1_S0MAR EQU 0x1C ; Offset for Memory Address Register
+SENSOR_REG EQU 0x40007404 ; Dummy address for Sensor Data Register
+RAM_BUFFER EQU 0x20000400 ; Destination address in RAM
+
+; --- DMA Initialization Routine ---
+SETUP_DMA:
+    LDR R0, =DMA1_BASE ; Load DMA Base into R0
+
+    ; 1. Set Peripheral Address (Source)
+    LDR R1, =SENSOR_REG
+    STR R1, [R0, #DMA1_S0PAR]
+
+    ; 2. Set Memory Address (Destination)
+    LDR R1, =RAM_BUFFER
+    STR R1, [R0, #DMA1_S0MAR]
+
+    ; 3. Set Number of Items to Transfer (1024 bytes / 2 bytes per beat = 512)
+    MOV R1, #512
+    STR R1, [R0, #DMA1_S0NDTR]
+
+    ; 4. Configure Control Register (CR)
+    ; We need to set bits for: 
+    ; - Memory Increment (MINC)
+    ; - PSIZE (16-bit) and MSIZE (8-bit)
+    ; - Transfer Complete Interrupt Enable (TCIE)
+    ; - Enable DMA (EN)
+    
+    LDR R1, =( (1 << 10) | (1 << 13) | (1 << 4) | (1 << 0) )
+    ; Bit 10: MINC (Increment RAM address)
+    ; Bit 13: PSIZE (01 = 16-bit)
+    ; Bit 4: TCIE (Transfer Complete Interrupt)
+    ; Bit 0: EN (Enable the Stream)
+    
+    STR R1, [R0, #DMA1_S0CR]
+
+    BX LR ; Return
+
+DMA1_Stream0_IRQHandler:
+    ; 1. Check if it was a Transfer Complete flag
+    ; 2. Clear the flag (so the interrupt doesn't loop forever)
+    ; 3. Signal your main thread that 1024 bytes are ready!
+    BX LR
