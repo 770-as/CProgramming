@@ -1,0 +1,1 @@
+/*Design a driver for a high speed sensor on a microcontroller. The sensor fills a small hardware buffer every 10 microseconds. */
