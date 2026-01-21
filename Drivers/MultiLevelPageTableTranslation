@@ -1,0 +1,21 @@
+/*Virtual address space : 36 bit=64GB
+Physical address space : 32-bit 4 GB of actual RAM
+Page Size 4 KB
+Page Table Entry 4 bytes 
+You are debugging a page fault on a process. The cpu tries to access the virtual address: 0x123456789
+How many bits of the virtual address will you use for the directory index, for the page table index
+and for the offset ? 
+The tlb is a high speed virtual cache that stores mappings recently used. When the cpu generates the 
+virtual address, the MMU doesnt immediately go to ram, it extracts the virtual page number. 
+The MMU must now perform a page walk, reading the page directory from ram then reading the page table
+from ram (2 bus transactions), once it finds the physical address, it updates the TLB such that the 
+next access to this page will be hit, if it is on the disk it triggers a segmentation page. The TLB
+is SRAM based and physically integrated into the MMU.  
+TLB thrashing occurs when the scan is made on a huge amount of data. The first 64 entries are added 
+to the TLB, since we just move forward and not backward, each time a new entry is met, the RAM will 
+kill the first TLB mapping and rebuild a new one which takes many cpu cycles. On a 1GB of data, this
+wastes 26 million cpu cycles because there are roughyl 260 000 entries and each cost 100 cpu cyles. 
+
+
+
+*/
