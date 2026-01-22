@@ -1,0 +1,86 @@
+/*Build a driver for a simple framebuffer display. The hardware maps the pixels of your screen directly into a range of memory addresses. To draw a pixel you don't just send a command you simply
+use mov or memcpy to write a color value to a specific memory address. You have a display with a resolution of 1024x768 pixels. Each pixel is 4 bytes each pixel being four bytes and the start of 
+the screen is mapped with a physical address. 
+Write a assembly function to draw a veritcal line of a specific color from top to bottom at a specific column.
+
+In a 32 bit system memory is divided into 4KB pages, your 728 pixels take up 2912 bytes because each pixel takes in memory four bytes, if your esi starts at 3000 you willhit a segmentation fault. 
+The CPU stops halfway because the next physical address is not 
+mapped in the Page Table. The driver must scatter gather the mapping to ensure the 28 pixels can cross that 4KB boundary. In 32 bit assembly we use base 16 or base 10
+
+When Fast Startup is ON, clicking "Shut Down" doesn't actually stop your hardware. It saves the current state of the system kernel and drivers (including the TPM security drivers) to the hard drive and then hibernates.
+Many drivers (especially older ones or security-related ones like TPM-WMI) aren't designed to be put into a deep sleep and woken up repeatedly without a full refresh. This is likely why your Start Button wouldnt 
+display—the driver responsible for the user interface was "tired" from being reloaded from a hibernation file instead of being started fresh.
+When Windows Update says there are "no updates," it means the software side is done, but your Lenovo hardware hasn't "accepted" the new security certificates yet. This puts the TPM in a "busy" state, which 
+freezes the Windows interface.
+
+
+*/
+
+mov ecx, 728 ;
+mov edi, esi ;
+loop_start:
+  mov [edi], eax ;
+  add edi, 4 ;
+  dec ecx
+  jnz loop_start
+
+//That function is safer because we keep the pointer at the beginning 
+    mov ecx, 728 ; Total pixels to fill
+    xor ebx, ebx ; Clear ebx (this is our index: 0, 1, 2...)
+loop_start:
+    ; [esi + ebx*4] calculates: BaseAddress + (PixelIndex * 4 bytes)
+    mov [esi + ebx*4], eax ; Write color to the specific pixel
+    
+    inc ebx ; Move to pixel index 1, 2, 3...
+    dec ecx ; Decrease remaining count
+    jnz loop_start ; Loop 728 times
+
+; Function: draw_vertical_line(int x, int color)
+; ESI = The Virtual Address mapped to 0xE0000000
+; EBX = The X coordinate (column)
+; EDX = The Color value (e.g., 0xFF0000 for Red)
+
+draw_line:
+    ; 1. Calculate the starting address for column X
+    ; Start = Base + (X * 4)
+    shl ebx, 2              ; Multiply X by 4 (shift left 2)
+    add esi, ebx            ; ESI now points to the top of column X
+
+    ; 2. Set up the loop
+    mov ecx, 768            ; Number of rows (screen height)
+    mov eax, edx            ; Put color in EAX for fast writing
+
+draw_loop:
+    mov [esi], eax          ; THE MMIO STEP: Write color to hardware memory
+    add esi, 4096           ; Jump to the pixel exactly below (one full row) because we move from X,Y to X,Y+1 each row is 1024 then we need 4096 bytes t skip forward.
+    
+    dec ecx                 ; Count down rows
+    jnz draw_loop           ; Repeat until bottom of screen
+    ret
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
