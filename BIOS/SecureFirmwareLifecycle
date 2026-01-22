@@ -1,0 +1,9 @@
+* Simulate the cryptographic handoff that occurs from the moment the power button is pressed until the windows kernel takes control. The  core component hierarchy is : the motherboard (root of trust) which contain the SPI
+Flash (uefi bios) and the boot ROM holding the public keys used to verify the next stage of code. The RPMB is a partition usually found in eMMC, UFS or NVMe storage. It uses a shared secret key between the processor and 
+the storage to store version counters, preventing attackers from downgrading to an older vulnerable firmware version, ntoskernel.exe is the heart of windows, it must be digitally signed by microsoft and verified by UEFI 
+Secure boot loaders before it is allowed to run. 
+Hardware reset: cpu executes microcode from immutable Boot ROM with hardware fused keys. 
+UEFI initialization : motherboard loads uefi firmware with signature check against the platform key. 
+Anti Rollback check : firmware queries the RPMB for the Version Counter, HMAC-SHA256 authenticated read/write.
+Bootloader (windows) bootmgr.efi is loaded verified by the authorized signature database.
+kernel launch ntoskernel.exe is executed checked for a valid microsoft production PCM signature.  *//
