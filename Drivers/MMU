@@ -11,4 +11,6 @@ okkepping writes data to that physical address and overwrite the browser memory'
 ntoskernel.exe creates a container for it, the kernel creates an EPROCESS block in the system's non paged memory. This is the primary ID card for a process, inside EPROCESS there is KPROCESSS (points to the Directory Table
 Base) and maintains the thread scheduling state. 
 In the kernel the field called DirectoryTéableBase is a physical address and points to the very top of the page table hierarchy. When the windows scheduler decides to run a thread from process A 
-*/
+One challenge of switching between processes is during an I/O operation. If the OS switches to another process during a long I.O operation on disk (menanig it replaces the 
+memory, physical address and other proceess's resources of process A by process B, the disk will actually write to process B physical memory address leaking data that belongs
+to process a*/
