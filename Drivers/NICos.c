@@ -60,6 +60,12 @@ address space for hardware. It is separate from ram, to move from ram to that sp
 executes an out instruction it toggles a special pin on the chip to tell the motherboard : i am not looking for a memory address but 
 for a     hardware port. If you have a serial port at 0xF3 that address exist in parallel dimension to the RAM address 0xF8. 
 
+
+If the input buffer is in User-Mode memory, a malicious program can change the data while your driver is in the 
+middle of the loop. Check: Your driver checks the packet header (e.g., "Is this packet size safe? Yes, 64 bytes").
+Attack: A separate malicious thread in the background quickly changes those 64 bytes to 10,000 bytes in the same 
+memory location. Use: Your rep movsd loop (or the NIC) continues to read from that pointer, now pulling in 10,000 bytes of data, 
+causing a Buffer Overflow or leaking sensitive kernel memory that was sitting next to the buffer.
 */
 
 mov eax, 0x01 ;the "hello" or reset command
@@ -70,6 +76,7 @@ out dx, al ; send the byte in al to the hardware port in dx
 mov ebx, [reg_base_addr] ;
 mov eax, 0x12345678 ;
 mov [ebx], eax; 
+
 
 
 
