@@ -1,0 +1,19 @@
+/*To understand the mmu in windows you must understand the hardware it controls. Since windows 
+runs on intel amd architecture look for intel 64 and IA 32 architecture software developer.
+Understand the bit level structure of page table entries that the windows kernel modifies to 
+manage memory permissions. Understand MDL (memory descriptor lists) system space vs user space.
+The PFN database is the central data structure the windows kernel uses to track the state of 
+every physical page of RAM. Virtual to physical address translation details the software hardware 
+interface how the windows kernel configures the MMU to perform address translation using page 
+tables. A significant portion of the book is dedicated toworking set management the collection of 
+pages currently residing in physical ram for a process, it explains the algorithms to trim memory
+when the system is under pressure. How file data is mapped into a process's virtual address space
+using Section Objects (the underlying mechanism for mmap in windows) and how the kernel handles the 
+resulting page faults. 
+The page fault handler: the book explains the complex logic executed by the kernel when the hardware
+MMU raises a page fault exception, including how it determines whether to read data from the disk
+retrieve it from the standby list or zero out a new page. 
+System memory pools: it provides technical details on the management of paged and non paged pools
+which are the primary memory allocation areas for kernel mode drivers and components. 
+It is possible to model the PFN database as a very large array of structs where each struct contains
+an active, modified, standby, free, bad and zeroed. */
