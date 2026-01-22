@@ -1,0 +1,14 @@
+/*The PFN database is a large array of struct with the number of components locking this page. How many processes have this page in their working set ? A back pinter to the Page Table Entry that owns 
+this physical page allowing the kernel to find and invalidate it instantly.
+Performance Winner : Martignetti emphasizes the Standby List, if a page is lost it is taken from the Standby List and moved back to active without I/O dis.
+Modified Page Writer : Background kernel threads monitor te modified list. When this list gets too long, these threads wake up to flush the dirty pages to the pagefile. 
+To create the PFN, i suggest to use an API for devices to fetch pages from the MMU, each time that API is called a handle is given to the MMU to establish the page sharing and the new connected device 
+is updated to the database. 
+When a CPU process uses a page, the OS can swap that page to the disk whenever it wants. A hardware device doesnt understand page fault. If the OS pages out a memory block while a device is mid write the device will
+write data into a physical frame that might now belong to a different process. You must pin or Lock the page using MmProbeAndLockPages. A user-mode app asks a device to write data into buffer A. The kernel moves the 
+data in buffer A to the Pagefile on idsk and marks that physical RAM frame as free. The kernel gives that same physical RAM frame to a different process to store a password. The NVMe drive unaware of the OS's internal bo
+okkepping writes data to that physical address and overwrite the browser memory's process.   
+ntoskernel.exe creates a container for it, the kernel creates an EPROCESS block in the system's non paged memory. This is the primary ID card for a process, inside EPROCESS there is KPROCESSS (points to the Directory Table
+Base) and maintains the thread scheduling state. 
+In the kernel the field called DirectoryTéableBase is a physical address and points to the very top of the page table hierarchy. When the windows scheduler decides to run a thread from process A 
+*/
