@@ -43,5 +43,8 @@ NVMe stands for Non-Volatile Memory Express. It is the modern standard for stora
 Why it's "Brand New": In 2026, we are seeing PCIe 5.0 and even early PCIe 6.0 NVMe drives. These can reach speeds over 14,000 MB/s, whereas an old SATA drive is capped at roughly 600 MB/s.
 The Connection: It slots directly into an M.2 port on the motherboard. This removes the "middleman" (the SATA controller) and allows the drive to talk directly to the CPU
 
-
+Scenario: You have an older desktop computer that was running Windows 10 on a traditional Legacy BIOS setup. You decide to upgrade your system by purchasing a brand-new NVMe SSD and a modern motherboard.
+You successfully move your old SATA SSD (which contains all your files and the OS) over to the new motherboard. However, when you power on the machine, it boots straight into the UEFI BIOS settings. Even though 
+the BIOS "sees" the drive connected to the SATA port, the drive does not appear in the Boot Priority list.
+The Goal: Explain why the new UEFI motherboard won't boot the old drive and identify the two specific technical changes required to fix this.
 
