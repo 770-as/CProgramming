@@ -1,0 +1,2 @@
+In most programming contexts, goto is discouraged. 
+However, in low-level C (like Linux kernel or systems programming), it is a standard pattern for cleanup and error handling. It ensures that if something fails, the function exits cleanly through a single point (end:).
