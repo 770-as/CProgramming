@@ -1,0 +1,29 @@
+NTSTATUS ReadRawSector(PDEVICE_OBJECT LowerDeviceObject, LARGE_INTEGER Offset, PVOID Buffer) {
+    PIRP irp;
+    KEVENT event;
+    IO_STATUS_BLOCK ioStatus;
+    PIO_STACK_LOCATION irpSp;
+
+    KeInitializeEvent(&event, NotificationEvent, FALSE);
+
+    // 1. Allocate the IRP based on the lower driver's stack requirements
+    irp = IoAllocateIrp(LowerDeviceObject->StackSize, FALSE);
+    if (!irp) return STATUS_INSUFFICIENT_RESOURCES;
+
+    // 2. Set up the IRP buffer (Direct I/O)
+    irp->MdlAddress = IoAllocateMdl(Buffer, 512, FALSE, FALSE, NULL);
+    MmBuildMdlForNonPagedPool(irp->MdlAddress);
+
+    // 3. Configure the Stack Location for the next driver
+    irpSp = IoGetNextIrpStackLocation(irp);
+    irpSp->MajorFunction = IRP_MJ_READ;
+    irpSp->Parameters.Read.Length = 512;
+    irpSp->Parameters.Read.ByteOffset = Offset;
+
+    [span_3](start_span)// 4. Set the Completion Routine[span_3](end_span)
+    // This allows your driver to regain control once the disk driver finishes
+    IoSetCompletionRoutine(irp, MyReadCompletionRoutine, &event, TRUE, TRUE, TRUE);
+
+    // 5. Pass the IRP down the stack
+    return IoCallDriver(LowerDeviceObject, irp);
+}
