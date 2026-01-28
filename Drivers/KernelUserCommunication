@@ -1,0 +1,82 @@
+NTSTATUS MyReadWriteDispatch(PDEVICE_OBJECT DeviceObject, PIRP Irp)
+{
+    // Get the current location in the I/O stack
+    PIO_STACK_LOCATION irpStack = IoGetCurrentIrpStackLocation(Irp);
+    ULONG bytesRequested = 0;
+
+    if (irpStack->MajorFunction == IRP_MJ_READ) {
+        bytesRequested = irpStack->Parameters.Read.Length;
+        // Logic for reading data...
+    } 
+    else if (irpStack->MajorFunction == IRP_MJ_WRITE) {
+        bytesRequested = irpStack->Parameters.Write.Length;
+        // Logic for writing data...
+    }
+
+    // Finish the request
+    Irp->IoStatus.Status = STATUS_SUCCESS;
+    Irp->IoStatus.Information = bytesRequested; // Number of bytes actually processed
+    IoCompleteRequest(Irp, IO_NO_INCREMENT);
+    
+    return STATUS_SUCCESS;
+}
+
+NTSTATUS MyDeviceControlDispatch(PDEVICE_OBJECT DeviceObject, PIRP Irp)
+{
+    PIO_STACK_LOCATION irpStack = IoGetCurrentIrpStackLocation(Irp);
+    
+    // The IOCTL code sent from user-mode via DeviceIoControl()
+    ULONG ioControlCode = irpStack->Parameters.DeviceIoControl.IoControlCode;
+
+    switch (ioControlCode)
+    {
+        case MY_CUSTOM_IOCTL_RESET:
+            // Hardware reset logic here
+            break;
+
+        case MY_CUSTOM_IOCTL_GET_STATUS:
+            // Status retrieval logic here
+            break;
+
+        default:
+            Irp->IoStatus.Status = STATUS_INVALID_DEVICE_REQUEST;
+            break;
+    }
+
+    IoCompleteRequest(Irp, IO_NO_INCREMENT);
+    return Irp->IoStatus.Status;
+}
+
+
+
+
+
+
+NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
+{
+    // 1. Assign the Read/Write handler
+    DriverObject->MajorFunction[IRP_MJ_READ]  = MyReadWriteDispatch;
+    DriverObject->MajorFunction[IRP_MJ_WRITE] = MyReadWriteDispatch;
+
+    // 2. Assign the Device Control handler
+    DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = MyDeviceControlDispatch;
+
+    // 3. Mandatory: You must handle Create and Close to allow the app to get a handle
+    DriverObject->MajorFunction[IRP_MJ_CREATE] = MySimpleDispatch;
+    DriverObject->MajorFunction[IRP_MJ_CLOSE]  = MySimpleDispatch;
+
+    return STATUS_SUCCESS;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
