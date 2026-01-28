@@ -1,0 +1,38 @@
+#include <windows.h>
+#include <iostream>
+
+// This code must match exactly what is defined in the Driver
+#define MY_DRIVER_RESET_CMD  CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_ANY_ACCESS)
+
+int main() {
+    // 1. Get a Handle to the Driver (triggers IRP_MJ_CREATE in the driver)
+    HANDLE hDevice = CreateFile(
+        L"\\\\.\\MyDeviceLink", // The name the driver registered
+        GENERIC_READ | GENERIC_WRITE,
+        0, NULL, OPEN_EXISTING, 0, NULL
+    );
+
+    if (hDevice == INVALID_HANDLE_VALUE) {
+        std::cout << "Failed to connect to driver!" << std::endl;
+        return 1;
+    }
+
+    // 2. Send the command (triggers IRP_MJ_DEVICE_CONTROL)
+    DWORD bytesReturned;
+    BOOL success = DeviceIoControl(
+        hDevice,
+        MY_DRIVER_RESET_CMD,    // This becomes irpStack->Parameters.DeviceIoControl.IoControlCode
+        NULL, 0,                // Input buffer (none here)
+        NULL, 0,                // Output buffer (none here)
+        &bytesReturned,
+        NULL
+    );
+
+    if (success) {
+        std::cout << "Driver successfully reset the hardware!" << std::endl;
+    }
+
+    // 3. Close the handle (triggers IRP_MJ_CLOSE)
+    CloseHandle(hDevice);
+    return 0;
+}
