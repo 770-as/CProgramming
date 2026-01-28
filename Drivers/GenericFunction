@@ -1,0 +1,83 @@
+NTSTATUS MyGenericDispatch(PDEVICE_OBJECT DeviceObject, PIRP Irp)
+{
+    // 1. Get the current stack location to see what the OS wants
+    PIO_STACK_LOCATION irpStack = IoGetCurrentIrpStackLocation(Irp);
+    NTSTATUS status = STATUS_SUCCESS;
+
+    // 2. Identify the specific operation
+    switch (irpStack->MajorFunction)
+    {
+        case IRP_MJ_CREATE:
+            // Handle when a user app calls CreateFile()
+            DbgPrint("Device opened!\n");
+            break;
+
+        case IRP_MJ_CLOSE:
+            // Handle when a user app calls CloseHandle()
+            DbgPrint("Device closed!\n");
+            break;
+
+        default:
+            status = STATUS_INVALID_DEVICE_REQUEST;
+            break;
+    }
+
+    // 3. Complete the IRP and send it back to the I/O Manager
+    Irp->IoStatus.Status = status;
+    Irp->IoStatus.Information = 0;
+    IoCompleteRequest(Irp, IO_NO_INCREMENT);
+    
+    return status;
+}
+
+
+
+NTSTATUS MyPassThroughDispatch(PDEVICE_OBJECT DeviceObject, PIRP Irp)
+{
+    // Prepare the IRP for the next driver down the stack
+    IoSkipCurrentIrpStackLocation(Irp);
+
+    // Get the lower device object (stored in your Device Extension)
+    PDEVICE_OBJECT nextLowerDriver = ((PDEVICE_EXTENSION)DeviceObject->DeviceExtension)->LowerDevice;
+
+    // Send it down the chain
+    return IoCallDriver(nextLowerDriver, Irp);
+}
+
+
+
+
+NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
+{
+    // Direct both CREATE and CLOSE to the same generic function
+    DriverObject->MajorFunction[IRP_MJ_CREATE] = MyGenericDispatch;
+    DriverObject->MajorFunction[IRP_MJ_CLOSE]  = MyGenericDispatch;
+
+    // Direct READ and WRITE to a different handler (or the same one)
+    DriverObject->MajorFunction[IRP_MJ_READ]   = MyPassThroughDispatch;
+    DriverObject->MajorFunction[IRP_MJ_WRITE]  = MyPassThroughDispatch;
+
+    // Set the DriverUnload routine
+    DriverObject->DriverUnload = MyDriverUnload;
+
+    return STATUS_SUCCESS;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
