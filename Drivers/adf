@@ -1,0 +1,37 @@
+/*In your original disassembly snippet: mov DWORD PTR [esp+0x104c], eax
+If that eax was a pointer you were about to give to a NIC, you would have to be certain it was a Physical Address. If it was a pointer for your own driver's internal use, it would be a Virtual Address.
+1. Allocation	Driver creates the Ring or Linked List.	Virtual (to write)
+2. Linking	Driver writes the Physical address into the "Link" fields.	Physical (for hardware)
+3. Trigger	Driver writes the Start Address into a Peripheral Register.	Physical (via MMIO)
+4. Scavenge	Hardware follows physical links to find data.	Physical (via DMA)
+5. Cleanup	Driver follows virtual links to see what the hardware did.	Virtual (via MMU)
+
+
+
+*/
+
+; Assume ESI contains the VIRTUAL address of the current Descriptor
+; Each descriptor has the address of the NEXT one at offset +0
+
+loop_start:
+    ; 1. Do work with current descriptor
+    mov eax, [esi + 8]      ; Get the data buffer pointer
+    call process_data       ; (Your driver logic)
+
+    ; 2. The "Jump" to the next link
+    mov esi, [esi]          ; Load the NEXT address into ESI
+                            ; (This is the scavenger hunt step!)
+
+    ; 3. Check if we hit the end
+    test esi, esi           ; Is the pointer NULL (0)?
+    jnz loop_start          ; If not zero, go to the next one
+
+
+
+
+
+
+
+
+
+
