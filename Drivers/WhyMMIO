@@ -1,0 +1,28 @@
+/^*why we need mmio n a driver, if you miscalculate the count like this, 
+you aren't just "missing pixels." You might be leaving the hardware in an intermediate state.
+
+Many NICs and Display Controllers expect a specific "Burst" of data. If you tell the hardware "I am sending a packet/row" and then you stop the loop halfway because your ecx was too small, 
+the hardware might hang (Wait Forever) because it is still waiting for the remaining bytes to arrive in the buffer. */
+
+; Function: draw_vertical_line(int x, int color)
+; ESI = The Virtual Address mapped to 0xE0000000
+; EBX = The X coordinate (column)
+; EDX = The Color value (e.g., 0xFF0000 for Red)
+
+draw_line:
+    ; 1. Calculate the starting address for column X
+    ; Start = Base + (X * 4)
+    shl ebx, 2              ; Multiply X by 4 (shift left 2)
+    add esi, ebx            ; ESI now points to the top of column X
+
+    ; 2. Set up the loop
+    mov ecx, 768            ; Number of rows (screen height)
+    mov eax, edx            ; Put color in EAX for fast writing
+
+draw_loop:
+    mov [esi], eax          ; THE MMIO STEP: Write color to hardware memory
+    add esi, 4096           ; Jump to the pixel exactly below (one full row)
+    
+    dec ecx                 ; Count down rows
+    jnz draw_loop           ; Repeat until bottom of screen
+    ret
